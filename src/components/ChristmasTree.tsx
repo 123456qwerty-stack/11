@@ -80,13 +80,76 @@ export function ChristmasTree() {
   );
 }
 
+function DetailedOrnament({ position, color, size, index }: { position: [number, number, number], color: string, size: number, index: number }) {
+  const meshRef = useRef<THREE.Group>(null);
+  const [hovered, setHovered] = useState(false);
+
+  // Swaying animation
+  useFrame((state) => {
+    if (meshRef.current) {
+      const time = state.clock.getElapsedTime();
+      // Subtle swaying based on index to offset them
+      meshRef.current.rotation.z = Math.sin(time + index) * 0.1;
+      meshRef.current.rotation.x = Math.cos(time * 0.8 + index) * 0.05;
+    }
+  });
+
+  // Randomly choose a shape type based on index
+  const shapeType = index % 3; // 0: Sphere, 1: Teardrop, 2: Diamond
+
+  return (
+    <group 
+      ref={meshRef} 
+      position={position}
+      onPointerOver={() => setHovered(true)}
+      onPointerOut={() => setHovered(false)}
+      onClick={(e) => {
+        e.stopPropagation();
+        confetti({
+          particleCount: 25,
+          spread: 60,
+          origin: { x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight },
+          colors: [color, '#d4af37'],
+        });
+      }}
+    >
+      {/* Ornament Body */}
+      <mesh castShadow scale={hovered ? 1.3 : 1} rotation={shapeType === 1 ? [Math.PI, 0, 0] : [0, 0, 0]}>
+        {shapeType === 0 && <sphereGeometry args={[size, 24, 24]} />}
+        {shapeType === 1 && <coneGeometry args={[size, size * 2, 24]} />}
+        {shapeType === 2 && <octahedronGeometry args={[size, 0]} />}
+        
+        <meshStandardMaterial 
+          color={color} 
+          metalness={0.9} 
+          roughness={0.1} 
+          emissive={color}
+          emissiveIntensity={hovered ? 1.5 : 0.2}
+        />
+      </mesh>
+
+      {/* Ornament Cap (Gold) */}
+      <mesh position={[0, size * 0.9, 0]}>
+        <cylinderGeometry args={[size * 0.3, size * 0.4, size * 0.3, 12]} />
+        <meshStandardMaterial color="#d4af37" metalness={1} roughness={0.1} />
+      </mesh>
+
+      {/* Hanging String (Subtle) */}
+      <mesh position={[0, size * 1.5, 0]}>
+        <cylinderGeometry args={[0.005, 0.005, size, 8]} />
+        <meshStandardMaterial color="#d4af37" opacity={0.5} transparent />
+      </mesh>
+    </group>
+  );
+}
+
 function Ornaments() {
-  const [hovered, setHovered] = useState<number | null>(null);
   const ornaments = useMemo(() => {
     const items = [];
-    const colors = ['#d4af37', '#f9e29c', '#ffffff', '#ff4444'];
+    // Luxury palette: Gold, Emerald, Soft Gold, White
+    const colors = ['#d4af37', '#062c1e', '#f9e29c', '#ffffff'];
     
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 60; i++) {
       const angle = Math.random() * Math.PI * 2;
       const height = Math.random() * 4;
       const radius = (1 - height / 4.5) * 2.5;
@@ -96,9 +159,9 @@ function Ornaments() {
           Math.cos(angle) * radius,
           height,
           Math.sin(angle) * radius
-        ],
+        ] as [number, number, number],
         color: colors[Math.floor(Math.random() * colors.length)],
-        size: 0.08 + Math.random() * 0.12
+        size: 0.08 + Math.random() * 0.1
       });
     }
     return items;
@@ -107,31 +170,13 @@ function Ornaments() {
   return (
     <>
       {ornaments.map((orn, i) => (
-        <mesh 
+        <DetailedOrnament 
           key={i} 
-          position={orn.position as [number, number, number]} 
-          castShadow
-          onPointerOver={() => setHovered(i)}
-          onPointerOut={() => setHovered(null)}
-          onClick={(e) => {
-            e.stopPropagation();
-            confetti({
-              particleCount: 20,
-              spread: 50,
-              origin: { x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight },
-              colors: [orn.color, '#d4af37'],
-            });
-          }}
-        >
-          <sphereGeometry args={[orn.size * (hovered === i ? 1.5 : 1), 16, 16]} />
-          <meshStandardMaterial 
-            color={orn.color} 
-            metalness={1} 
-            roughness={0.05} 
-            emissive={orn.color}
-            emissiveIntensity={hovered === i ? 2 : 0.3}
-          />
-        </mesh>
+          index={i}
+          position={orn.position} 
+          color={orn.color} 
+          size={orn.size} 
+        />
       ))}
     </>
   );
